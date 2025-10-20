@@ -4,13 +4,22 @@ import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LogoutIcon from '@mui/icons-material/Logout';
 
 import { NavLink } from 'react-router-dom'
-import { useContextAPI } from '../ContextAPI.jsx';
+import { useContextAPI } from '../../components/ContextAPI.jsx';
 
 export default function Header() {
-    const { theme, toggleTheme } = useContextAPI();
+
+    const { theme, toggleTheme, isLoggedIn, logoutUser } = useContextAPI();
 
     const handleThemeToggle = () => {
         toggleTheme(theme === 'light' ? 'dark' : 'light');
+    }
+
+    const handleLogout = async () => {
+      try {
+        await logoutUser();
+      } catch (error) {
+        console.log("Logout error : ", error)
+      }
     }
 
     return (
@@ -49,14 +58,27 @@ export default function Header() {
 
               </button>                
             
-            <NavLink to='/login'>
-              
-              <button className={`cursor-pointer font-bold text-2xl hover:scale-110 
-                ${ theme === 'dark' ? ''  : '' }`}>
-                  Login
-              </button>
-            
-            </NavLink>
+              {/* Conditional rendering based on login status */}
+              {isLoggedIn ? (
+
+                <div className='flex items-center gap-2'>
+                  <button 
+                    onClick={handleLogout}
+                    className='flex items-center gap-1 cursor-pointer font-bold text-lg hover:scale-110'
+                  >
+                    <LogoutIcon fontSize="small" />
+                    Logout
+                  </button>
+                </div>
+                
+              ) : (
+                <NavLink to='/login'>
+                  <button className={`cursor-pointer font-bold text-2xl hover:scale-110 
+                    ${ theme === 'dark' ? ''  : '' }`}>
+                      Sign In
+                  </button>
+                </NavLink>
+              )}
                   
             </div>
           

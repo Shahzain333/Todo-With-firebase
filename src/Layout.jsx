@@ -1,6 +1,6 @@
 import React from 'react'
 import { Outlet } from 'react-router-dom'
-import Header from './components/header/Header.jsx'
+import Header from './pages/header/Header.jsx'
 import { useContextAPI } from './components/ContextAPI.jsx'
 
 function Layout() {

@@ -7,10 +7,10 @@ import { createBrowserRouter, createRoutesFromElements, RouterProvider, Route } 
 import { ContextProvider } from '../src/components/ContextAPI.jsx'
 
 // Import Pages / Components
-import Login from './components/login/Login.jsx'
-import Signup from './components/register/Signup.jsx'
+import Login from './pages/login/Login.jsx'
+import Signup from './pages/register/Signup.jsx'
 import Layout from './Layout.jsx'
-import Home from './components/home/Home.jsx'
+import Home from './pages/home/Home.jsx'
 
 const router = createBrowserRouter(
   createRoutesFromElements(
