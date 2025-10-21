@@ -1,10 +1,11 @@
 import React from 'react'
-import { useContextAPI } from '/src/components/ContextAPI'
+import { useContextAPI } from '/src/ContextAPI'
+// import Todos from '../todos/Todos';
 import { NavLink } from 'react-router-dom'
 
 function Home() {
 
-    const { isLoggedIn, user } = useContextAPI();
+    const { isLoggedIn } = useContextAPI();
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[80vh]">
@@ -20,11 +21,13 @@ function Home() {
                             You are successfully logged in. Start managing your tasks!
                         </p>
                         <NavLink 
-                            to="/" 
-                            className="bg-zinc-700 hover:bg-zinc-600 text-white px-6 py-3 rounded-md font-semibold"
+                            to="/todos" 
+                            className="bg-zinc-700 hover:bg-zinc-600 text-white px-6 py-3 
+                            rounded-md font-semibold"
                         >
                             Go to My Todos
                         </NavLink>
+                        {/* <todos /> */}
                     </>
                 ) : (
                     <>

@@ -15,6 +15,12 @@ import {
     GithubAuthProvider,
 } from "firebase/auth";
 
+import { 
+    getFirestore, 
+    collection,
+    addDoc,
+} from "firebase/firestore";
+
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -25,7 +31,19 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-export const ContextAPI = createContext();
+export const ContextAPI = createContext({
+    todos: [
+        { 
+            id: 1, 
+            todo: "Learn React", 
+            completed: false 
+        },
+    ],
+    addTodo: (todo) => {},
+    updateTodo: (id, todo) => {},
+    deleteTodo: (id) => {},
+    toggleComplete: (id) => {},
+});
 
 export const useContextAPI = () => useContext(ContextAPI);
 
@@ -44,16 +62,27 @@ const googleProvider = new GoogleAuthProvider();
 // Instance of Github Authentication
 const githubProvider = new GithubAuthProvider();
 
+// Initialize Cloud Firestore and get a reference to the service
+const firebaseDB = getFirestore(firebaseApp);
+
 export const  ContextProvider = ({children}) => {
 
-    const [theme, setTheme] = useState('light');
+    const [theme, setTheme] = useState(localStorage.getItem('theme') ? 
+        localStorage.getItem('theme') : 'light');
 
-    const toggleTheme = (value) => {
-        setTheme(value)
-    }
+    const toggleTheme = (newTheme) => {
+        setTheme(newTheme);
+        try {
+            localStorage.setItem('theme', newTheme);
+        } catch (error) {
+            console.log("Error saving theme to localStorage:", error);
+        }
+    };
 
     // Track the User make State and useEffect And onAUthStateChanged check the current user
     const [user,setUser] = useState(null)
+    const [todos,setTodos] = useState([]);
+    const [loading, setLoading] = useState(false);
 
     const isLoggedIn = user ? true : false
     
@@ -98,6 +127,34 @@ export const  ContextProvider = ({children}) => {
         return await signOut(firebaseAuth);
     }
 
+    // Function for add data in the firebase store
+    async function addTodo (todoData){
+        if(!user){
+            alert('User must be logged in to add todos')
+            return
+        }
+
+        try {
+            
+            const newTodo = {
+                todo: todoData.todo,
+                completed: false,
+                userId: user.uid,
+                createdAt: new Date(),
+                updateAt: new Date()
+            }
+            
+            const docRef = await addDoc(collection(firebaseDB,"todos"), newTodo);
+            //console.log("Add Data With ID : ", docRef.id)
+
+            return docRef.id;
+
+        } catch (error) {
+            console.error("Error adding todo:", error);
+            throw error;
+        }
+    }
+
     return (
         <ContextAPI.Provider value = {{
           theme, 
@@ -110,7 +167,10 @@ export const  ContextProvider = ({children}) => {
           logoutUser,
           isLoggedIn,
           user,
-
+          todos,
+          addTodo,
+        //   updateTodo,
+        //   deleteTodo
         }}>
             {children}
         </ContextAPI.Provider>

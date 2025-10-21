@@ -2,12 +2,13 @@ import React, { useContext, useState, useEffect } from 'react'
 import GoogleIcon from '@mui/icons-material/Google';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import { NavLink } from 'react-router-dom'
-import { useContextAPI } from '../../components/ContextAPI';
+import { useContextAPI } from '../../ContextAPI';
 import { useNavigate } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
 import CloseIcon from '@mui/icons-material/Close';
 import IconButton from '@mui/material/IconButton';
+import { jsx } from 'react/jsx-runtime';
 
 function Login() {
 
@@ -78,9 +79,12 @@ function Login() {
         }
 
         try {
-            await context.signinUserWithEmailAndPassword(email,password);
+            const result = await context.signinUserWithEmailAndPassword(email,password);
+            //localStorage.setItem('User : ',JSON.stringify(result))
+            
             setEmail('');
             setPassword('');
+
         } catch (error) {
             let errorMessage = 'Login failed. Please try again.';
             

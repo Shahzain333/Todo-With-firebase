@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
-import { useContextAPI } from '../../components/ContextAPI'
+import { useContextAPI } from '../../ContextAPI'
 import { useNavigate } from 'react-router-dom'
 import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
@@ -115,6 +115,7 @@ function Signup() {
             
             const result = await context.signupUserWithEmailAndPassword(email,password);
             // console.log("Result :", result)
+            //localStorage.setItem('User : ', JSON.stringify(result))
 
             // IMPORTANT: Sign out the user immediately after signup
             await context.logoutUser();
@@ -131,7 +132,7 @@ function Signup() {
             // Redirect to login page after a short delay
             setTimeout(() => {
                 navigate('/login');
-            }, 2000);
+            }, 1000);
             
         } catch (error) {
 

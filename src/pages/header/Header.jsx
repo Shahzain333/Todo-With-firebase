@@ -4,14 +4,16 @@ import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LogoutIcon from '@mui/icons-material/Logout';
 
 import { NavLink } from 'react-router-dom'
-import { useContextAPI } from '../../components/ContextAPI.jsx';
+import { useContextAPI } from '../../ContextAPI';
 
 export default function Header() {
 
     const { theme, toggleTheme, isLoggedIn, logoutUser } = useContextAPI();
 
     const handleThemeToggle = () => {
-        toggleTheme(theme === 'light' ? 'dark' : 'light');
+        const newTheme = theme === 'light' ? 'dark' : 'light';
+        toggleTheme(newTheme);
+        localStorage.setItem(value)
     }
 
     const handleLogout = async () => {
@@ -73,8 +75,7 @@ export default function Header() {
                 
               ) : (
                 <NavLink to='/login'>
-                  <button className={`cursor-pointer font-bold text-2xl hover:scale-110 
-                    ${ theme === 'dark' ? ''  : '' }`}>
+                  <button className={`cursor-pointer font-bold text-2xl hover:scale-110`}>
                       Sign In
                   </button>
                 </NavLink>
