@@ -1,72 +1,109 @@
-import React, { useState, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import React, { useState } from 'react'
+import { Link, Navigate } from 'react-router-dom'
 import { useContextAPI } from '../../ContextAPI'
-import { useNavigate } from 'react-router-dom'
+import GoogleIcon from '@mui/icons-material/Google';
+import GitHubIcon from '@mui/icons-material/GitHub';
 import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
 import CloseIcon from '@mui/icons-material/Close';
 import IconButton from '@mui/material/IconButton';
 
 function Signup() {
+    
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [confirmPassword, setConfirmPassword] = useState('')
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState('')
+    const [success, setSuccess] = useState('')
+    const [openSnackbar, setOpenSnackbar] = useState(false)
+    const [snackbarSeverity, setSnackbarSeverity] = useState('error') // 'error' or 'success'
+    const [emailError, setEmailError] = useState('')
+    const [passwordError, setPasswordError] = useState('')
+    const [confirmPasswordError, setConfirmPasswordError] = useState('')
+    
+    const { signupUserWithEmailAndPassword, isLoggedIn, theme } = useContextAPI()
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [openSnackbar, setOpenSnackbar] = useState(false);
-    const [success, setSuccess] = useState('');
-    const [snackbarType, setSnackbarType] = useState('error'); // 'error' or 'success'
-    const [emailError, setEmailError] = useState('');
-    const [passwordError, setPasswordError] = useState('');
+    if (isLoggedIn) {
+        return <Navigate to="/todos" />
+    }
 
-    const context = useContextAPI();
-    const navigate = useNavigate();
-
-    // Email Validation Regex
+    // Email validation regex
     const validateEmail = (email) => {
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         return emailRegex.test(email);
-    }
+    };
 
-    // Password Validation Regex
+    // Password validation
     const validatePassword = (password) => {
-        // At least 6 characters, at least one letter and one number
-        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
-        return passwordRegex.test(password);
-    }
+        return password.length >= 6; // Firebase requires at least 6 characters
+    };
 
     const handleEmailChange = (e) => {
         const value = e.target.value;
         setEmail(value);
-
+        
         // Clear error when user starts typing
-        if(emailError){
+        if (emailError) {
             setEmailError('');
         }
-
+        
         // Real-time validation
-        if(value && !validateEmail(value)){
+        if (value && !validateEmail(value)) {
             setEmailError('Please enter a valid email address');
         } else {
             setEmailError('');
         }
-    }
+    };
 
     const handlePasswordChange = (e) => {
         const value = e.target.value;
         setPassword(value);
-
-        // Clear error when user starts typing
-        if(passwordError){
+        
+        if (passwordError) {
             setPasswordError('');
         }
-
-        // Real-time validation
-        if(value && !validatePassword(value)){
-            setPasswordError('Password must be at least 6 characters with at least one letter and one number');
+        
+        // Real-time password validation
+        if (value && !validatePassword(value)) {
+            setPasswordError('Password must be at least 6 characters long');
         } else {
             setPasswordError('');
         }
-    }
+
+        // Check confirm password if it's already filled
+        if (confirmPassword && value !== confirmPassword) {
+            setConfirmPasswordError('Passwords do not match');
+        } else if (confirmPasswordError) {
+            setConfirmPasswordError('');
+        }
+    };
+
+    const handleConfirmPasswordChange = (e) => {
+        const value = e.target.value;
+        setConfirmPassword(value);
+        
+        if (confirmPasswordError) {
+            setConfirmPasswordError('');
+        }
+        
+        // Real-time confirm password validation
+        if (value && password !== value) {
+            setConfirmPasswordError('Passwords do not match');
+        } else {
+            setConfirmPasswordError('');
+        }
+    };
+
+    const showSnackbar = (message, severity = 'error') => {
+        setSnackbarSeverity(severity);
+        if (severity === 'error') {
+            setError(message);
+        } else {
+            setSuccess(message);
+        }
+        setOpenSnackbar(true);
+    };
 
     const handleCloseSnackbar = (reason) => {
         if (reason === 'clickaway') {
@@ -77,215 +114,273 @@ function Signup() {
         setSuccess('');
     };
 
-    const createAccount = async (e) => {
-        e.preventDefault();
+    const handleSubmit = async (e) => {
+        e.preventDefault()
         
+        // Clear previous errors
         setError('');
-        setSuccess('');
         setEmailError('');
         setPasswordError('');
-        
-        // Basic validation
-        if (!email || !password) {
-            setError('Please enter both email and password');
-            setSnackbarType('error');
-            setOpenSnackbar(true);
+        setConfirmPasswordError('');
+
+        // Validation
+        if (!email || !password || !confirmPassword) {
+            showSnackbar('Please fill in all fields');
             return;
         }
 
-        // Email format validation
         if (!validateEmail(email)) {
             setEmailError('Please enter a valid email address');
-            setError('Please enter a valid email address');
-            setSnackbarType('error');
-            setOpenSnackbar(true);
+            showSnackbar('Please enter a valid email address');
             return;
         }
 
-        // Password strength validation
         if (!validatePassword(password)) {
-            setPasswordError('Password must be at least 6 characters with at least one letter and one number');
-            setError('Password must be at least 6 characters with at least one letter and one number');
-            setSnackbarType('error');
-            setOpenSnackbar(true);
+            setPasswordError('Password must be at least 6 characters long');
+            showSnackbar('Password must be at least 6 characters long');
             return;
         }
 
-        try {
-            
-            const result = await context.signupUserWithEmailAndPassword(email,password);
-            // console.log("Result :", result)
-            //localStorage.setItem('User : ', JSON.stringify(result))
+        if (password !== confirmPassword) {
+            setConfirmPasswordError("Passwords don't match!");
+            showSnackbar("Passwords don't match!");
+            return;
+        }
 
-            // IMPORTANT: Sign out the user immediately after signup
-            await context.logoutUser();
-            
-            // Show success message and redirect to login
-            setSuccess('Account created successfully!');
-            setSnackbarType('success');
-            setOpenSnackbar(true);
-            
-            // Clear form
+        setIsLoading(true)
+        
+        try {
+            await signupUserWithEmailAndPassword(email, password)
+            // Clear form on success
             setEmail('');
             setPassword('');
-            
-            // Redirect to login page after a short delay
-            setTimeout(() => {
-                navigate('/login');
-            }, 1000);
-            
+            setConfirmPassword('');
+            // Show success message
+            showSnackbar('Account created successfully! You can now sign in.', 'success');
+     
         } catch (error) {
-
             let errorMessage = 'Signup failed. Please try again.';
             
-            // Handle specific Firebase auth errors
             switch (error.code) {
                 case 'auth/email-already-in-use':
-                    errorMessage = 'This email is already registered. Please use a different email or try logging in.';
+                    errorMessage = 'An account with this email already exists.';
                     break;
                 case 'auth/invalid-email':
                     errorMessage = 'Invalid email address format.';
                     setEmailError('Please enter a valid email address');
                     break;
                 case 'auth/operation-not-allowed':
-                    errorMessage = 'Email/password accounts are not enabled. Please contact support.';
+                    errorMessage = 'Email/password accounts are not enabled.';
                     break;
                 case 'auth/weak-password':
-                    errorMessage = 'Password is too weak. Please choose a stronger password with at least one letter and one number.';
-                    setPasswordError('Password must be at least 6 characters with at least one letter and one number');
+                    errorMessage = 'Password is too weak. Please use a stronger password.';
+                    setPasswordError('Password is too weak. Please use a stronger password.');
                     break;
                 case 'auth/network-request-failed':
                     errorMessage = 'Network error. Please check your connection.';
                     break;
-                case 'auth/too-many-requests':
-                    errorMessage = 'Too many attempts. Please try again later.';
+                case 'auth/popup-closed-by-user':
+                    errorMessage = 'Signup cancelled. Please try again.';
+                    break;
+                case 'auth/popup-blocked':
+                    errorMessage = 'Popup was blocked by your browser. Please allow popups for this site.';
                     break;
                 default:
                     errorMessage = error.message || 'Signup failed. Please try again.';
             }
             
-            setError(errorMessage);
-            setSnackbarType('error');
-            setOpenSnackbar(true);
+            showSnackbar(errorMessage);
             console.error("Signup error:", error);
+        } finally {
+            setIsLoading(false)
         }
     }
 
     // Check if form is valid for submit button
-    const isFormValid = () => {
-        return email && password && validateEmail(email) && validatePassword(password);
-    }
+    const isFormValid = email && 
+                       password && 
+                       confirmPassword && 
+                       !emailError && 
+                       !passwordError && 
+                       !confirmPasswordError &&
+                       validateEmail(email) &&
+                       validatePassword(password) &&
+                       password === confirmPassword;
 
-  return (
-    <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
+    return (
+        <div className={`min-h-screen flex flex-col justify-center px-6 py-12 lg:px-8 ${
+            theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
+        }`}>
 
-        {/* Snackbar for both error and success */}
-        <Snackbar 
-            open={openSnackbar} 
-            autoHideDuration={6000} 
-            onClose={handleCloseSnackbar}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        >
-            <Alert 
-                severity={snackbarType}
-                action={
-                    <IconButton
-                        aria-label="close"
-                        color="inherit"
-                        size="small"
-                        onClick={handleCloseSnackbar}
-                    >
-                        <CloseIcon fontSize="inherit" />
-                    </IconButton>
-                }
-                sx={{ width: '100%' }}
+            <Snackbar 
+                open={openSnackbar} 
+                autoHideDuration={6000} 
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
             >
-                {snackbarType === 'success' ? success : error}
-            </Alert>
-        </Snackbar>
+                <Alert 
+                    severity={snackbarSeverity}
+                    action={
+                        <IconButton
+                            aria-label="close"
+                            color="inherit"
+                            size="small"
+                            onClick={handleCloseSnackbar}
+                        >
+                            <CloseIcon fontSize="inherit" />
+                        </IconButton>
+                    }
+                    sx={{ width: '100%' }}
+                >
+                    {snackbarSeverity === 'success' ? success : error}
+                </Alert>
+            </Snackbar>
 
-        <div className="sm:mx-auto sm:w-full sm:max-w-sm bg-zinc-900 dark:bg-zinc-800 
-        p-4 sm:p-8 rounded-2xl shadow-lg">
-            
-            <form action="#" method="POST" onSubmit={createAccount} className="space-y-6">
+            <div className={`sm:mx-auto sm:w-full sm:max-w-sm p-4 sm:p-8 rounded-2xl shadow-lg ${
+                theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+            }`}>
                 
-                <div>
-                    <label htmlFor="email" className="block text-lg font-medium text-gray-100">
-                        Email
-                    </label>
-                    <div className="mt-2">
-                        <input 
-                            id="email" 
-                            type="email" 
-                            name="email" 
-                            value={email}
-                            onChange={handleEmailChange}
-                            required 
-                            autoComplete="email" 
-                            className={`block w-full rounded-md bg-white/5 px-3 py-1.5 text-base 
-                            text-white outline-1 -outline-offset-1 placeholder:text-gray-500 
-                            focus:outline-2 focus:-outline-offset-2 sm:text-sm/6
-                            ${emailError ? 'outline-red-500 focus:outline-red-500' : 'outline-white/10 focus:outline-zinc-500'}`}
-                            placeholder="Enter your email"
-                        />
-                        {emailError && (
-                            <p className="mt-1 text-sm text-red-500">{emailError}</p>
-                        )}
+                <h2 className={`text-center text-2xl font-bold leading-9 tracking-tight ${
+                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>
+                    Create your account
+                </h2>
+
+                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="email" className={`block text-sm font-medium ${
+                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                            }`}>
+                                Email address
+                            </label>
+                            <div className="mt-2">
+                                <input
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    required
+                                    value={email}
+                                    onChange={handleEmailChange}
+                                    className={`block w-full rounded-md px-3 py-2 text-base border ${
+                                        theme === 'dark' 
+                                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                                    } ${
+                                        emailError 
+                                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                                            : 'focus:border-blue-500 focus:ring-blue-500'
+                                    } focus:outline-none focus:ring-2 sm:text-sm`}
+                                    placeholder="Enter your email"
+                                />
+                                {emailError && (
+                                    <p className="mt-1 text-sm text-red-500">{emailError}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="password" className={`block text-sm font-medium ${
+                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                            }`}>
+                                Password
+                            </label>
+                            <div className="mt-2">
+                                <input
+                                    id="password"
+                                    name="password"
+                                    type="password"
+                                    required
+                                    value={password}
+                                    onChange={handlePasswordChange}
+                                    className={`block w-full rounded-md px-3 py-2 text-base border ${
+                                        theme === 'dark' 
+                                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                                    } ${
+                                        passwordError 
+                                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                                            : 'focus:border-blue-500 focus:ring-blue-500'
+                                    } focus:outline-none focus:ring-2 sm:text-sm`}
+                                    placeholder="Create a password"
+                                />
+                                {passwordError && (
+                                    <p className="mt-1 text-sm text-red-500">{passwordError}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="confirmPassword" className={`block text-sm font-medium ${
+                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                            }`}>
+                                Confirm Password
+                            </label>
+                            <div className="mt-2">
+                                <input
+                                    id="confirmPassword"
+                                    name="confirmPassword"
+                                    type="password"
+                                    required
+                                    value={confirmPassword}
+                                    onChange={handleConfirmPasswordChange}
+                                    className={`block w-full rounded-md px-3 py-2 text-base border ${
+                                        theme === 'dark' 
+                                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                                    } ${
+                                        confirmPasswordError 
+                                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                                            : 'focus:border-blue-500 focus:ring-blue-500'
+                                    } focus:outline-none focus:ring-2 sm:text-sm`}
+                                    placeholder="Confirm your password"
+                                />
+                                {confirmPasswordError && (
+                                    <p className="mt-1 text-sm text-red-500">{confirmPasswordError}</p>
+                                )}
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <div>
-                    <label htmlFor="password" className="block text-lg font-medium text-gray-100">Password</label>
-                    <div className="mt-2">
-                        <input 
-                            id="password" 
-                            type="password" 
-                            name="password" 
-                            value={password}
-                            onChange={handlePasswordChange}
-                            required 
-                            autoComplete="new-password" 
-                            className={`block w-full rounded-md bg-white/5 px-3 py-1.5 text-base 
-                            text-white outline-1 -outline-offset-1 placeholder:text-gray-500 
-                            focus:outline-2 focus:-outline-offset-2 sm:text-sm/6
-                            ${passwordError ? 'outline-red-500 focus:outline-red-500' : 'outline-white/10 focus:outline-zinc-500'}`}
-                            placeholder="Enter your password"
-                        />
-                        {passwordError && (
-                            <p className="mt-1 text-sm text-red-500">{passwordError}</p>
-                        )}
+                    <div>
+                        <button
+                            type="submit"
+                            disabled={isLoading || !isFormValid}
+                            className={`flex w-full justify-center rounded-md px-3 py-2 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                                theme === 'dark' 
+                                    ? 'bg-blue-600 hover:bg-blue-700 focus-visible:outline-blue-600' 
+                                    : 'bg-blue-500 hover:bg-blue-600 focus-visible:outline-blue-500'
+                            } cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200`}
+                        >
+                            {isLoading ? 'Creating account...' : 'Create account'}
+                        </button>
+                    
                     </div>
-                    <p className="mt-1 text-sm text-gray-400">
-                        Password must be at least 6 characters with at least one letter and one number
-                    </p>
-                </div>
 
-                <div>
-                    <button 
-                        type="submit" 
-                        className="flex w-full justify-center rounded-md bg-zinc-700 px-3 py-1.5 
-                        text-sm/6 font-semibold text-white hover:bg-zinc-600 
-                        focus-visible:outline-2 focus-visible:outline-offset-2 
-                        focus-visible:outline-zinc-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={!isFormValid()}
-                    >
-                        Sign up
-                    </button>
-                </div>
+                    {/* Not logged in yet section moved below */}
+                    <div className="text-center">
+                        <p className={`text-sm ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                        }`}>
+                            Not logged in yet?{' '}
+                            <Link 
+                                to="/login" 
+                                className={`font-semibold ${
+                                    theme === 'dark' 
+                                        ? 'text-blue-400 hover:text-blue-300' 
+                                        : 'text-blue-600 hover:text-blue-500'
+                                } transition-colors duration-200`}
+                            >
+                                Sign in
+                            </Link>
+                        </p>
+                    </div>
 
-            </form>
-
-            <p className="mt-10 text-center text-sm/6 text-gray-100">
-                Already have an account?  <NavLink to="/login"  className="font-semibold text-zinc-400 
-              hover:text-zinc-200">
-                    Login
-                </NavLink>
-            </p>
-
+                </form>
+            </div>
         </div>
-
-    </div>
-  )
+    )
 }
 
 export default Signup

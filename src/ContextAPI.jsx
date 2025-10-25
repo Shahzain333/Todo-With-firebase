@@ -19,6 +19,14 @@ import {
     getFirestore, 
     collection,
     addDoc,
+    query, 
+    where, 
+    getDocs,
+    onSnapshot,
+    doc,
+    orderBy,
+    updateDoc,
+    deleteDoc,
 } from "firebase/firestore";
 
 // Your web app's Firebase configuration
@@ -32,13 +40,7 @@ const firebaseConfig = {
 };
 
 export const ContextAPI = createContext({
-    todos: [
-        { 
-            id: 1, 
-            todo: "Learn React", 
-            completed: false 
-        },
-    ],
+    todos: [],
     addTodo: (todo) => {},
     updateTodo: (id, todo) => {},
     deleteTodo: (id) => {},
@@ -81,24 +83,35 @@ export const  ContextProvider = ({children}) => {
 
     // Track the User make State and useEffect And onAUthStateChanged check the current user
     const [user,setUser] = useState(null)
+
     const [todos,setTodos] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filteredTodos, setFilteredTodos] = useState([]);
+    
 
     const isLoggedIn = user ? true : false
     
     //console.log("User State : ", user);
 
     useEffect(() => {
-        onAuthStateChanged(firebaseAuth, (currentUser) => {
+         const unsubscribeAuth = onAuthStateChanged(firebaseAuth, (currentUser) => {
             //console.log("Auth State Changed : ", currentUser);
             
             if(currentUser){
-                return setUser(currentUser);
+                setUser(currentUser);
+                // Call fetchTodos when user logs in
+                fetchTodos(currentUser.uid)
             }else {
-                return setUser(null)
+                setUser(null)
+                setTodos([])   // Clear todos when user logs out
             }
 
         })
+
+        // Cleanup function
+        return () => unsubscribeAuth();
+    
     }, [])
 
     // Function to signup user with email and password
@@ -141,12 +154,11 @@ export const  ContextProvider = ({children}) => {
                 completed: false,
                 userId: user.uid,
                 createdAt: new Date(),
-                updateAt: new Date()
+                updateAt: new Date()   // Fixed typo: was 'updateAt'
             }
             
             const docRef = await addDoc(collection(firebaseDB,"todos"), newTodo);
             //console.log("Add Data With ID : ", docRef.id)
-
             return docRef.id;
 
         } catch (error) {
@@ -154,6 +166,134 @@ export const  ContextProvider = ({children}) => {
             throw error;
         }
     }
+
+    // Function for fetching todos 
+    async function fetchTodos(userID) {
+
+        if(!userID) return
+
+        setLoading(true);
+
+        try {
+
+            const collectionRef = collection(firebaseDB,"todos");
+            const q = query(collectionRef, where("userId", '==', userID), orderBy("createdAt", "desc") ) 
+            // const result = await getDocs(q);
+            // console.log(result);
+
+            //Real-time listener for todos
+            const unsubscribe = onSnapshot(q, (querySnapshot) => {
+                
+                const todosData = []
+                
+                querySnapshot.forEach((doc) => {
+                    todosData.push({
+                        id: doc.id,
+                        ...doc.data()
+                    })
+                })
+            
+                setTodos(todosData)
+                setLoading(false);
+            
+            })
+
+            return unsubscribe;      // Return unsubscribe function for cleanup
+
+        } catch (error) {
+            console.error("Error in todos snapshot context:", error);
+            setLoading(false);
+        }
+    }
+
+    // Function for Update todo
+    async function updateTodo(id, updatedData) {
+        try {
+            const todoRef = doc(firebaseDB,'todos', id)
+            await updateDoc(todoRef, {
+                ...updatedData,
+                updateAt: new Date()
+            })
+            console.log("Todo updated successfully")
+        }catch(error){
+            console.error('Error updating todo:', error)
+            throw error
+        }
+    }
+
+    // Function for Delete Todo
+    async function deleteTodo(id) {
+        try {
+            await deleteDoc(doc(firebaseDB, 'todos', id))
+            console.log("Todo deleted successfully");
+        } catch (error) {
+            console.error('Error deleting todo:', error)
+            throw error
+        }
+    }
+
+    // Function for complete toggle
+    async function toggleComplete(id) {
+        try {
+            const todo = todos.find((t) => (t.id === id))
+            if(todo) {
+                const todoRef = doc(firebaseDB, "todos",id);
+                await updateDoc(todoRef, {
+                    completed: !todo.completed,
+                    updateAt: new Date()
+                })
+            }
+        } catch (error) {
+            console.error("Error toggling todo",error)
+            throw error
+        }
+    }
+
+    // Function for search 
+    async function searchTodos(searchText){
+    
+        if(!user || !searchText.trim()){
+            setFilteredTodos([])
+            return
+        }
+
+        try {
+     
+            setLoading(true)
+     
+            const todoRef = collection(firebaseDB, "todos")
+            const q = query(todoRef, where("userId", '==', user.uid))
+            
+            const querySnapshot = await getDocs(q);
+
+            const searchResults = []
+
+            querySnapshot.forEach((doc) => {
+                const todoData = {
+                    id: doc.id,
+                    ...doc.data()
+                }
+                // Client-side filtering for substring search
+                if (todoData.todo.toLowerCase().includes(searchText.toLowerCase())) {
+                    searchResults.push(todoData)
+                }
+            })
+
+            setFilteredTodos(searchResults)
+
+        } catch (error) {
+            console.error("Error searching todos:", error);
+            setFilteredTodos([]);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // Add clear search function
+    const clearSearch = () => {
+        setSearchTerm('');
+        setFilteredTodos([]);
+    };
 
     return (
         <ContextAPI.Provider value = {{
@@ -169,8 +309,16 @@ export const  ContextProvider = ({children}) => {
           user,
           todos,
           addTodo,
-        //   updateTodo,
-        //   deleteTodo
+          fetchTodos,
+          loading,
+          updateTodo,
+          deleteTodo,
+          toggleComplete,
+          searchTerm,
+          setSearchTerm,
+          searchTodos,
+          filteredTodos,
+          clearSearch,
         }}>
             {children}
         </ContextAPI.Provider>
